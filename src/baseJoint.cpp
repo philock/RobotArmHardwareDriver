@@ -19,6 +19,9 @@ stepper(AccelStepper::DRIVER, stepPin, dirPin){
 
 }
 
+void BaseJoint::setTargetSpeed(float radPerSecond, unsigned long updatePeriodMicros){
+    _acceleration = (radPerSecond - getSpeed())/(updatePeriodMicros * 0.000001);
+}
 
 int BaseJoint::radToSteps(float rad){
     return (int)round(rad*_convFactor);

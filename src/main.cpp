@@ -1,10 +1,12 @@
 #include <Arduino.h>
+#include <axisCDR.h>
 
-void setup(void) {
-  Serial.begin(9600);
+AxisCDR axisC(axisConfigC);
+
+void setup(void){
 
 }
 
 void loop(){
-
+  axisC.run();
 }

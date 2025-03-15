@@ -23,6 +23,10 @@ class AxisCDR : BaseJoint{
 
         bool _isHomed = false;
 
+        elapsedMicros tIntegrate;
+
+        void stateActive();
+
         void stateHoming();
         void stateHomingBackoff();
 

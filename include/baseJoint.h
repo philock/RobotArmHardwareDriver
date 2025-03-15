@@ -18,8 +18,12 @@ class BaseJoint{
         void setPos(float rad);
         float getPos();
 
+        // Set speed 
         void setSpeed(float radPerSecond);
         float getSpeed();
+
+        // Accelerate to setpoint speed over the time updatePeriodMicros in microseconds
+        void setTargetSpeed(float radPerSecond, unsigned long updatePeriodMicros);
 
         void setAccel(float radPerSS);
 
@@ -31,12 +35,15 @@ class BaseJoint{
         float _transmission; // Divider for motor rotation. E.g. transmission = 3 means for one joint rotation, 3 motor rotations.
         float _convFactor;   // Equals stepsPerRad*microstepping*transmission
         
+        
         int radToSteps(float rad);
         float stepsToRad(int steps);
         
     protected:
         JointStates _state = STOP;
         AccelStepper stepper;
+        
+        float _acceleration = 0;
 
 };
 

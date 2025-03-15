@@ -21,7 +21,7 @@ endstop(conf.pinEs, conf.endstopActiveHigh, conf.endstopInputPullup){
 void AxisCDR::run(){
     switch(_state){
         case JointStates::ACTIVE:
-            stepper.runSpeed();
+            stateActive();
             break;
 
         case JointStates::HOMING:
@@ -35,6 +35,15 @@ void AxisCDR::run(){
         default: // ESTOP and STOP states 
             break;
     }
+}
+
+void AxisCDR::stateActive(){
+    if(tIntegrate > ACCEL_INTEGRATION_RATE){
+        tIntegrate = 0;
+        setSpeed(getSpeed() + _acceleration*ACCEL_INTEGRATION_RATE*0.000001);
+    }
+
+    stepper.runSpeed();
 }
 
 void AxisCDR::stateHoming(){

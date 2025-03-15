@@ -2,7 +2,12 @@
 #define SYSTEM_CONFIG_H
 
 #define TMC2226_R_SENSE 0.15f // Ohms
-#define ENDSTOP_POLL_RATE 10 // milliseconds
+
+#define ACCEL_INTEGRATION_RATE 5000 // microseconds
+
+// Inputs
+#define ENDSTOP_POLL_RATE        10 // milliseconds
+#define EMERGENCY_STOP_POLL_RATE 50 // milliseconds
 
 // Axis A
 #define AX_A_HOMING_SPEED         0.2  // rad/sec

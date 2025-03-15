@@ -34,7 +34,7 @@ struct AxisConfig{
 #define PIN_AX_A_CS  0
 #define PIN_AX_A_EN  39
 #define PIN_AX_A_ES  5
-const struct AxisConfig axisAconfig = {
+const AxisConfig axisConfigA = {
     .pinStep = PIN_AX_A_STP,
     .pinDir  = PIN_AX_A_DIR,
     .pinCs   = PIN_AX_A_CS,
@@ -55,6 +55,13 @@ const struct AxisConfig axisAconfig = {
 #define PIN_AX_C_DIAG 29
 #define PIN_AX_C_EN   30
 #define PIN_AX_C_ES   9
+const AxisConfig axisConfigC = {
+    .pinStep = PIN_AX_C_STP,
+    .pinDir  = PIN_AX_C_DIR,
+    .pinCs   = PIN_AX_C_DIAG,
+    .pinEn   = PIN_AX_C_EN,
+    .pinEs   = PIN_AX_C_ES
+};
 
 // Axis D
 #define PIN_AX_D_STP  14
