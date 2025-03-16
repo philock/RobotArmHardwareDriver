@@ -10,19 +10,17 @@ enum MSG : char{
     JT_C_P,
     JT_D_P,
 
-    // Joint velocities
+    // Joint velocity setpoints
     JT_R_V,
     JT_A_V,
     JT_B_V,
     JT_C_V,
     JT_D_V,
 
-    // Joint accelerations
-    JT_R_A,
-    JT_A_A,
-    JT_B_A,
-    JT_C_A,
-    JT_D_A,
+    QUERY_JT_STATES, // Send current joint positions and velocities
+
+    GR_CLOSE, // Close gripper
+    GR_OPEN,  // Open gripper
 
     MSG_END // End of transmission
 };

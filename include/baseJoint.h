@@ -2,6 +2,9 @@
 #define BASEJOINT_H
 
 #include <AccelStepper.h>
+#include <input.h>
+#include <systemConfig.h>
+#include <pinConfig.h>
 
 enum JointStates{
     STOP,
@@ -13,37 +16,52 @@ enum JointStates{
 
 class BaseJoint{
     public:
-        BaseJoint(float degPerFullStep, int microstepping, float transmissionFactor, int stepPin, int dirPin);
+        BaseJoint(const AxisConfig& conf);
 
-        void setPos(float rad);
-        float getPos();
+        void home();
+        bool isHomed();
 
-        // Set speed 
-        void setSpeed(float radPerSecond);
-        float getSpeed();
+        void emergencyStop();
+        void stop();
+        void start();
+
+        void run();
 
         // Accelerate to setpoint speed over the time updatePeriodMicros in microseconds
-        void setTargetSpeed(float radPerSecond, unsigned long updatePeriodMicros);
-
-        void setAccel(float radPerSS);
-
+        void  accelToSpeed(float radPerSecond, unsigned long accelPeriodMicros);
+        
+        void  setSpeed(float radPerSecond);
+        float getSpeed();
+        void  setPos(float rad);
+        float getPos();
+        
     private:
         bool _invertDir;
     
+        int _pinEn;
+
         float _stepsPerRad;
         int   _microstepping;
         float _transmission; // Divider for motor rotation. E.g. transmission = 3 means for one joint rotation, 3 motor rotations.
         float _convFactor;   // Equals stepsPerRad*microstepping*transmission
-        
+
+        elapsedMicros _tIntegrate;
+        float _acceleration = 0;
         
         int radToSteps(float rad);
         float stepsToRad(int steps);
+
+        void stateActive();
+
+        void stateHoming();
+        void stateHomingBackoff();
         
     protected:
-        JointStates _state = STOP;
-        AccelStepper stepper;
-        
-        float _acceleration = 0;
+        AccelStepper _stepper;
+        Input        _endstop;
+    
+        JointStates _state  = STOP;
+        bool  _isHomed      = false;
 
 };
 
