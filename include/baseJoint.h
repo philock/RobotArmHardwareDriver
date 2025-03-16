@@ -21,7 +21,8 @@ class BaseJoint{
         void home();
         bool isHomed();
 
-        void emergencyStop();
+        void emergencyStopActivation();
+        void emergencyStopDeactivation();
         void stop();
         void start();
 
@@ -47,6 +48,7 @@ class BaseJoint{
 
         elapsedMicros _tIntegrate;
         float _acceleration = 0;
+        float _speedTarget  = 0;
         
         int radToSteps(float rad);
         float stepsToRad(int steps);
@@ -60,7 +62,7 @@ class BaseJoint{
         AccelStepper _stepper;
         Input        _endstop;
     
-        JointStates _state  = STOP;
+        JointStates _state  = JointStates::STOP;
         bool  _isHomed      = false;
 
 };

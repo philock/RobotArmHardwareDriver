@@ -52,7 +52,10 @@ void BaseJoint::run(){
 void BaseJoint::stateActive(){
     if(_tIntegrate > ACCEL_INTEGRATION_RATE){
         _tIntegrate = 0;
-        setSpeed(getSpeed() + _acceleration*ACCEL_INTEGRATION_RATE*0.000001);
+
+        float vNew = getSpeed() + _acceleration*ACCEL_INTEGRATION_RATE*0.000001;
+
+        if(abs(vNew) < abs(_speedTarget)) setSpeed(vNew);
     }
 
     _stepper.runSpeed();
@@ -78,7 +81,7 @@ void BaseJoint::stateHomingBackoff(){
         setPos(0);
 
         _isHomed = true;
-        _state = JointStates::ACTIVE;
+        _state = JointStates::STOP;
 
         return;
     }
@@ -90,32 +93,39 @@ void BaseJoint::stateHomingBackoff(){
 // State entry functions
 // -----------------------------------------
 void BaseJoint::home(){
-    _state = JointStates::HOMING;
+    if(_state == JointStates::ESTOP) return;
 
+    _stepper.enableOutputs();
     setSpeed(AX_A_HOMING_SPEED);
+    
+    _state = JointStates::HOMING;
 }
 
-void BaseJoint::emergencyStop(){
+void BaseJoint::emergencyStopActivation(){
     setSpeed(0);
     digitalWrite(_pinEn, HIGH); // Disable stepper driver
-    _stepper.disableOutputs();
+    _stepper.disableOutputs();  // Disable stepper outputs
 
     _isHomed = false;
 
     _state = JointStates::ESTOP;
 }
 
+void BaseJoint::emergencyStopDeactivation(){
+    stop();
+}
+
 void BaseJoint::stop(){
     setSpeed(0);
+    digitalWrite(_pinEn, LOW); // Enable stepper driver
+    _stepper.disableOutputs(); // Disable stepper outputs
 
     _state = JointStates::STOP;
 }
 
 void BaseJoint::start(){
-    if(!_isHomed) return;
+    if(!_isHomed || _state != JointStates::STOP) return;
 
-    
-    digitalWrite(_pinEn, LOW); 
     _stepper.enableOutputs();
 
     _state = JointStates::ACTIVE;
@@ -150,6 +160,7 @@ void BaseJoint::setSpeed(float radPerSecond){
 
 void BaseJoint::accelToSpeed(float radPerSecond, unsigned long accelPeriodMicros){
     _acceleration = (radPerSecond - getSpeed())/(accelPeriodMicros * 0.000001);
+    _speedTarget = radPerSecond;
 }
 
 float BaseJoint::getSpeed(){
