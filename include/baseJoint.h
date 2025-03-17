@@ -6,7 +6,7 @@
 #include <systemConfig.h>
 #include <pinConfig.h>
 
-enum JointStates{
+enum class JointStates{
     STOP,
     ACTIVE,
     HOMING,

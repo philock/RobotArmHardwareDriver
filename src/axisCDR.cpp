@@ -15,4 +15,14 @@ driver(conf.uartSerialPort, TMC2226_R_SENSE, conf.spiAddress){
     driver.microsteps(8);
 }
 
+void AxisCDR::home(){
+    if(_state == JointStates::ESTOP) return;
+
+    _stepper.enableOutputs();
+    setSpeed(AX_A_HOMING_SPEED);
+    
+    _state = JointStates::HOMING;
+}
+
+
 

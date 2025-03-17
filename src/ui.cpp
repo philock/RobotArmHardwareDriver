@@ -14,7 +14,7 @@
   MIT license, all text above must be included in any redistribution
  ****************************************************/
 
-#include <SPI.h>
+/* #include <SPI.h>
 #include <Wire.h>      // this is needed even tho we aren't using it
 #include <ILI9341_t3.h>
 #include <XPT2046_Touchscreen.h>
@@ -87,12 +87,12 @@ void loop()
   if (ts.bufferEmpty()) {
     return;
   }
-  /*
+  
   // You can also wait for a touch
-  if (! ts.touched()) {
-    return;
-  }
-  */
+  //if (! ts.touched()) {
+  //  return;
+  //}
+  
 
   // Retrieve a point  
   TS_Point p = ts.getPoint();
@@ -107,11 +107,11 @@ void loop()
   p.x = map(p.x, TS_MINX, TS_MAXX, 0, tft.width());
   p.y = map(p.y, TS_MINY, TS_MAXY, 0, tft.height());
 
-  /*
+  
   Serial.print("("); Serial.print(p.x);
   Serial.print(", "); Serial.print(p.y);
   Serial.println(")");
-  */
+  
 
   if (p.y < BOXSIZE) {
      oldcolor = currentcolor;
@@ -154,4 +154,4 @@ void loop()
   if (((p.y-PENRADIUS) > BOXSIZE) && ((p.y+PENRADIUS) < tft.height())) {
     tft.fillCircle(p.x, p.y, PENRADIUS, currentcolor);
   }
-}
+} */

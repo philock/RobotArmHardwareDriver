@@ -5,7 +5,7 @@
 
 Comm cm(115200);
 
-enum SystemStates{
+enum class SystemStates{
     ESTOP,
     STOP,
     ACTIVE,
@@ -29,6 +29,10 @@ AxisCDR axisD(axisConfigC);
 unsigned long updateVelocitiesInterval = 50000; // 50ms
 elapsedMicros t_lastVelocityUpdate;
 elapsedMicros t_systemTick;
+
+// Declarations
+void stop();
+bool allHomed();
 
 // -----------------------------------------
 // IO callbacks

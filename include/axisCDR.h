@@ -12,7 +12,6 @@ class AxisCDR : public BaseJoint{
         AxisCDR(const AxisConfig& conf);
 
         void home();
-        bool isHomed();
 
     private:
         TMC2209Stepper driver; // Equivalent to TMC2226
