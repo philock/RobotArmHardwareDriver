@@ -25,20 +25,15 @@ struct StatusMessage {
 
 class Logger {
 private:
-    static constexpr size_t MAX_MESSAGES = 20;  // Store last 20 messages
+    static constexpr int MAX_MESSAGES = 20;  // Store last 20 messages
     std::array<StatusMessage, MAX_MESSAGES> messageBuffer;
 
     int currentIndex = 0;
     int messageCount = 0;
+    bool newMessagesFlag = false;
     
 public:
     Logger() {}
-    
-    // Singleton pattern for global access
-    static Logger& getInstance(){
-        static Logger instance;
-        return instance;
-    }
     
     // Log a new message
     void log(MessageLevel level, const char* msg);
@@ -50,17 +45,18 @@ public:
     
     // Get number of messages stored
     int getMessageCount() const;
+
+    // Returns true if messages have been added. Reset when calling getMessage.
+    bool newMessagesAvailable() const;
     
-    // Get message from circular buffer, starting from the most recent
-    const StatusMessage* getMessage(int index) const;
+    // Get message from circular buffer, starting from the most recent. Reset new messages flag.
+    const StatusMessage* getMessage(int index);
     
     // Clear all messages
     void clear();
 };
 
-// Global accessor function
-inline Logger& getLogger() {
-    return Logger::getInstance();
-}
+// Single global instance
+extern Logger logger;
 
 #endif 

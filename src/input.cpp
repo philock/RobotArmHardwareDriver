@@ -42,7 +42,7 @@ void Input::setLongpressHandler(CallbackFunction f){
 }
 
 bool Input::read(){
-    int time = millis();
+    unsigned long time = millis();
 
     if(_isRateLimited){
 

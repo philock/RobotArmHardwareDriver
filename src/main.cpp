@@ -2,6 +2,7 @@
 #include <comm.h>
 #include <axisCDR.h>
 #include <baseJoint.h>
+#include <logger.h>
 
 Comm cm(115200);
 
@@ -135,6 +136,7 @@ void start(){
     axisR.start();
 
     state = SystemStates::ACTIVE;
+    logger.info("System started");
 }
 
 void stop(){

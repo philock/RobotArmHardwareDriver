@@ -1,157 +1,336 @@
-#include <Arduino.h>
-/***************************************************
-  This is our touchscreen painting example for the Adafruit ILI9341 Shield
-  ----> http://www.adafruit.com/products/1651
+#include <ui.h>
 
-  Check out the links above for our tutorials and wiring diagrams
-  These displays use SPI to communicate, 4 or 5 pins are required to
-  interface (RST is optional)
-  Adafruit invests time and resources providing this open source code,
-  please support Adafruit and open-source hardware by purchasing
-  products from Adafruit!
+void UI::init(){
+    tft.begin();
+    tft.setRotation(3);
+    tft.fillScreen(COL_BG);
 
-  Written by Limor Fried/Ladyada for Adafruit Industries.
-  MIT license, all text above must be included in any redistribution
- ****************************************************/
-
-/* #include <SPI.h>
-#include <Wire.h>      // this is needed even tho we aren't using it
-#include <ILI9341_t3.h>
-#include <XPT2046_Touchscreen.h>
-
-#define PIN_RELAIS 27
-
-// This is calibration data for the raw touch data to the screen coordinates
-#define TS_MINX 379
-#define TS_MINY 292
-#define TS_MAXX 3915
-#define TS_MAXY 3800
-
-// The STMPE610 uses hardware SPI on the shield, and #8
-#define STMPE_CS 36
-XPT2046_Touchscreen ts(STMPE_CS);
-
-// The display also uses hardware SPI, plus #9 & #10
-#define TFT_CS 37
-#define TFT_DC 38
-#define TFT_RST 24
-ILI9341_t3 tft = ILI9341_t3(TFT_CS, TFT_DC, TFT_RST);
-
-// Size of the color selection boxes and the paintbrush size
-#define BOXSIZE 40
-#define PENRADIUS 3
-int oldcolor, currentcolor;
-
-
-void setup(void) {
-  pinMode(PIN_RELAIS, OUTPUT);
-  digitalWrite(PIN_RELAIS, HIGH);
- 
-  Serial.begin(9600);
-  Serial.println(F("Touch Paint!"));
-
-  tft.begin();
-  tft.setClock(1000000);
-
-  if (!ts.begin(SPI)) {
-    Serial.println("Couldn't start touchscreen controller");
-    while (1);
-  }
-  Serial.println("Touchscreen started");
-
-  ts.setRotation(1);
-  tft.setRotation(3);
-
-  tft.fillScreen(ILI9341_BLACK);
-  
-  // make the color selection boxes
-  tft.fillRect(0,         0, BOXSIZE, BOXSIZE, ILI9341_RED);
-  tft.fillRect(BOXSIZE,   0, BOXSIZE, BOXSIZE, ILI9341_YELLOW);
-  tft.fillRect(BOXSIZE*2, 0, BOXSIZE, BOXSIZE, ILI9341_GREEN);
-  tft.fillRect(BOXSIZE*3, 0, BOXSIZE, BOXSIZE, ILI9341_CYAN);
-  tft.fillRect(BOXSIZE*4, 0, BOXSIZE, BOXSIZE, ILI9341_BLUE);
-  tft.fillRect(BOXSIZE*5, 0, BOXSIZE, BOXSIZE, ILI9341_MAGENTA);
- 
-  // select the current color 'red'
-  tft.drawRect(0, 0, BOXSIZE, BOXSIZE, ILI9341_WHITE);
-  currentcolor = ILI9341_RED;
-
-  tft.setCursor(10,60);
-  tft.println("Touch Paint");
+    drawButtonHoming();
+    drawButtonStartStop(true, false);
+    drawButtonUp();
+    drawButtonDown();
+    drawArmBox();
+    drawLogFull();
 }
 
+// Read touchscreen and handle inputs
+void UI::update(){
+    // Update log
+    if(logger.newMessagesAvailable()){
+        drawLogUpdate();
+    }
 
-void loop()
-{
-  // See if there's any  touch data for us
-  if (ts.bufferEmpty()) {
-    return;
-  }
+    // read touchscreen input
+    const int x = 200; 
+    const int y = 200;
+    constexpr int yHitbox = hButton + PADDING_SIDES;
+
+    // ignore right side of the screen
+    if(x > wButtonBig) return;
+
+    // 0: Home, 1: Start/Stop, 2: Up, 3: Down
+    int yIdx = y/yHitbox;
+
+    switch (yIdx){
+    case 0: // Home
+        _homeButtonPressed = true;
+        drawButtonHoming(true);
+        _cbButtonHome();
+        break; 
+    case 1: // Start/Stop
+        drawButtonStartStop(_startStopButtonIsStart, _startStopButtonPressed);
+        _cbButtonStartStop();
+        break;
+    case 2: // Up
+        scrollUp();
+        drawButtonUp(true);
+        break;
+    case 3: // Down
+        scrollDown();
+        drawButtonDown(true);
+        break;
+    default:
+        break;
+    }
+}
+
+// Set color joint state indicator dot. 0: Red, 1: Orange, 2: Green
+void UI::setJointIndicator(const char joint, const int state){
+    uint16_t col;
+
+    switch(state){
+        case 0: 
+            col = ILI9341_RED;
+            break;
+        case 1:
+            col = ILI9341_ORANGE;
+            break;
+        case 2:
+            col = ILI9341_GREEN;
+            break;
+        default:
+            return;
+    }
+
+    switch(joint){
+        case 'R':
+            drawDot(xR, yR, rDot, col, 'R');
+            break;
+        case 'A':
+            drawDot(xA, yA, rDot, col, 'A');
+            break;
+        case 'B':
+            drawDot(xB, yB, rDot, col, 'B');
+            break;
+        case 'C':
+            drawDot(xC, yC, rDot, col, 'C');
+            break;
+        case 'D':
+            drawDot(xD, yD, rDot, col, 'D');
+            break;
+        case 'G':
+            drawDot(xG, yG, rDot, col, 'G');
+            break;
+        default:
+            break;
+    }
+}
+
+// Set wether button should show start or stop
+void UI::setStartStopButtonState(bool start){
+    _startStopButtonIsStart = start;
+    drawButtonStartStop(_startStopButtonIsStart, _startStopButtonPressed);
+}
+
+void UI::registerCbButtonHome(CallbackFunction f){
+    _cbButtonHome = f;
+}
+
+void UI::registerCbButtonStartStop(CallbackFunction f){
+    _cbButtonStartStop = f;
+}
+
+// Adapted function from adafruit GFX library to support transparency
+void UI::drawRGBBitmapTransp(int16_t x, int16_t y, const uint16_t *bitmap, uint16_t transp, int16_t w, int16_t h) {
+    int16_t bw = (w + 7) / 8; // Bitmask scanline pad = whole byte
+    uint8_t b = 0;
+
+    tft.startWrite();
+
+    for (int16_t j = 0; j < h; j++, y++){
+      for (int16_t i = 0; i < w; i++){
+
+        uint16_t pixel = bitmap[j * w + i];
+
+        if (pixel != transp) {
+            tft.writePixel(x + i, y, pixel);
+        }
+
+      }
+    }
+
+    tft.endWrite();
+}
+
+void UI::drawButtonBox(const int x, const int y, const int w, const int h, const bool pressed){
+    if(pressed) tft.fillRoundRect(x, y, w, h, CORNER_RADIUS, COL_BUT_PRESSED);
+    else        tft.fillRoundRect(x, y, w, h, CORNER_RADIUS, COL_BOX);  
+
+    tft.drawRoundRect(x, y, w, h, CORNER_RADIUS, COL_OUTLINE);
+}
+
+void UI::fillLog(){
+    const StatusMessage* msg;
   
-  // You can also wait for a touch
-  //if (! ts.touched()) {
-  //  return;
-  //}
+    for (int i = 0; i < nLines; i++){
+        msg = logger.getMessage(i + _scrollPos);
+    
+        if (msg == nullptr) return;
+    
+        switch(msg->level){
+            case MessageLevel::INFO:
+            tft.setTextColor(ILI9341_DARKGREEN);
+            break;
+            case MessageLevel::WARNING:
+            //tft.setTextColor(ILI9341_ORANGE);
+            tft.setTextColor(ILI9341_YELLOW);
+            break;
+            case MessageLevel::ERROR:
+            tft.setTextColor(ILI9341_RED);
+            break;
+        }
+    
+        tft.setCursor(xLog + linesPadding, yLog + hLog - (i + 1)*(fontHight + linesPadding));
+        tft.setTextSize(1.8);
+        tft.println(msg->message);
+
+    }
+}
+
+// Position: float between 0 and 1
+void UI::drawScrollbar(float pos){
+    constexpr int h = hLog - 2*padScrollbar;
+    constexpr int x = TFT_WIDTH - PADDING_SIDES - padScrollbar - wScrollbar;
+    constexpr int y = yLog + padScrollbar;
+    constexpr int point_r = wScrollbar/2 - 1;
+    constexpr int point_x = x + wScrollbar/2;
+    constexpr int point_y_0 = y + point_r;
   
-
-  // Retrieve a point  
-  TS_Point p = ts.getPoint();
+    tft.fillRoundRect(x, y, wScrollbar, h, wScrollbar/2, COL_BG);
+    tft.drawRoundRect(x, y, wScrollbar, h, wScrollbar/2, COL_OUTLINE);  
   
- 
-  Serial.print("X = "); Serial.print(p.x);
-  Serial.print("\tY = "); Serial.print(p.y);
-  Serial.print("\tPressure = "); Serial.println(p.z);  
- 
- 
-  // Scale from ~0->4000 to tft.width using the calibration #'s
-  p.x = map(p.x, TS_MINX, TS_MAXX, 0, tft.width());
-  p.y = map(p.y, TS_MINY, TS_MAXY, 0, tft.height());
-
+    int point_y = point_y_0 + (h - 2*point_r - 1)*(1 - pos);
   
-  Serial.print("("); Serial.print(p.x);
-  Serial.print(", "); Serial.print(p.y);
-  Serial.println(")");
+    tft.fillCircle(point_x, point_y, point_r, COL_OUTLINE);
+}
+
+void UI::drawLogFull(){
+    int msgCount = logger.getMessageCount();
+    
+    // Draw box
+    tft.fillRoundRect(xLog, yLog, wLog, hLog, CORNER_RADIUS, COL_BOX);
+    tft.drawRoundRect(xLog, yLog, wLog, hLog, CORNER_RADIUS, COL_OUTLINE);
   
+    // Draw scrollbar
+    if(msgCount > nLines) drawScrollbar((float)_scrollPos/(msgCount - nLines));
+    else                  drawScrollbar(0);
+  
+    // write text lines
+    fillLog();
+}
 
-  if (p.y < BOXSIZE) {
-     oldcolor = currentcolor;
+void UI::drawLogUpdate(){
+    constexpr int x = xLog + linesPadding;
+    constexpr int w = wLog - 2*linesPadding - padScrollbar - wScrollbar;
+    constexpr int h = hLog - 2*linesPadding;
+    
+    // Clear log box
+    tft.fillRect(x, yLog + linesPadding, w , h, COL_BOX);
+    
+    // Update scrollbar
+    int msgCount = logger.getMessageCount();
+    if(msgCount > nLines) drawScrollbar((float)_scrollPos/(msgCount - nLines));
+    else                  drawScrollbar(0);
+  
+    // write text lines
+    fillLog();
+}
 
-     if (p.x < BOXSIZE) { 
-       currentcolor = ILI9341_RED; 
-       tft.drawRect(0, 0, BOXSIZE, BOXSIZE, ILI9341_WHITE);
-     } else if (p.x < BOXSIZE*2) {
-       currentcolor = ILI9341_YELLOW;
-       tft.drawRect(BOXSIZE, 0, BOXSIZE, BOXSIZE, ILI9341_WHITE);
-     } else if (p.x < BOXSIZE*3) {
-       currentcolor = ILI9341_GREEN;
-       tft.drawRect(BOXSIZE*2, 0, BOXSIZE, BOXSIZE, ILI9341_WHITE);
-     } else if (p.x < BOXSIZE*4) {
-       currentcolor = ILI9341_CYAN;
-       tft.drawRect(BOXSIZE*3, 0, BOXSIZE, BOXSIZE, ILI9341_WHITE);
-     } else if (p.x < BOXSIZE*5) {
-       currentcolor = ILI9341_BLUE;
-       tft.drawRect(BOXSIZE*4, 0, BOXSIZE, BOXSIZE, ILI9341_WHITE);
-     } else if (p.x < BOXSIZE*6) {
-       currentcolor = ILI9341_MAGENTA;
-       tft.drawRect(BOXSIZE*5, 0, BOXSIZE, BOXSIZE, ILI9341_WHITE);
-     }
+void UI::drawButtonUp(bool pressed){
+    constexpr int x = PADDING_SIDES;
+    constexpr int y = 3*PADDING_SIDES + 2*hButton;
+  
+    drawButtonBox(x, y, wButtonSmall, hButton, pressed);
+  
+    //      0
+    //    1   2
+  
+    // y2 > y1 > y0
+    constexpr int y0 = y + padScrollbar;
+    constexpr int y1 = y + hButton - padScrollbar;
+    constexpr int y2 = y1;
+  
+    constexpr int x0 = x + wButtonSmall/2;
+    constexpr int x1 = x + padScrollbar;
+    constexpr int x2 = x + wButtonSmall - padScrollbar;
+    tft.fillTriangle(x0, y0, x1, y1, x2, y2, COL_OUTLINE);
+}
+  
+void UI::drawButtonDown(bool pressed){
+    constexpr int x = PADDING_SIDES;
+    constexpr int y = 4*PADDING_SIDES + 3*hButton;
+  
+    drawButtonBox(x, y, wButtonSmall, hButton, pressed);
+  
+    //    0   1
+    //      2
+  
+    // y2 > y1 > y0
+    constexpr int y0 = y + padScrollbar;
+    constexpr int y1 = y0;
+    constexpr int y2 = y + hButton - padScrollbar;;
+  
+    constexpr int x0 = x + padScrollbar;
+    constexpr int x1 = x + wButtonSmall - padScrollbar;
+    constexpr int x2 = x + wButtonSmall/2;
+    tft.fillTriangle(x0, y0, x1, y1, x2, y2, COL_OUTLINE);
+}
 
-     if (oldcolor != currentcolor) {
-        if (oldcolor == ILI9341_RED) 
-          tft.fillRect(0, 0, BOXSIZE, BOXSIZE, ILI9341_RED);
-        if (oldcolor == ILI9341_YELLOW) 
-          tft.fillRect(BOXSIZE, 0, BOXSIZE, BOXSIZE, ILI9341_YELLOW);
-        if (oldcolor == ILI9341_GREEN) 
-          tft.fillRect(BOXSIZE*2, 0, BOXSIZE, BOXSIZE, ILI9341_GREEN);
-        if (oldcolor == ILI9341_CYAN) 
-          tft.fillRect(BOXSIZE*3, 0, BOXSIZE, BOXSIZE, ILI9341_CYAN);
-        if (oldcolor == ILI9341_BLUE) 
-          tft.fillRect(BOXSIZE*4, 0, BOXSIZE, BOXSIZE, ILI9341_BLUE);
-        if (oldcolor == ILI9341_MAGENTA) 
-          tft.fillRect(BOXSIZE*5, 0, BOXSIZE, BOXSIZE, ILI9341_MAGENTA);
-     }
-  }
-  if (((p.y-PENRADIUS) > BOXSIZE) && ((p.y+PENRADIUS) < tft.height())) {
-    tft.fillCircle(p.x, p.y, PENRADIUS, currentcolor);
-  }
-} */
+void UI::scrollUp(){
+    if(_scrollPos + nLines >= logger.getMessageCount()) return;
+    _scrollPos ++;
+  
+    drawLogUpdate();
+}
+  
+void UI::scrollDown(){
+    if(_scrollPos == 0) return;
+    _scrollPos --;
+  
+    drawLogUpdate();
+}
+
+void UI::drawDot(const int x, const int y, const int r, const uint16_t color, const char letter){
+    const int xt = x - r/2 + 1;
+    const int yt = y - r/2;
+  
+    tft.setTextSize(1);
+    tft.fillCircle(x, y, r, color);
+    tft.drawCircle(x, y, r, COL_OUTLINE);
+    tft.setCursor(xt, yt);
+    tft.print(letter);
+}
+  
+void UI::drawArmBox(){
+    drawRGBBitmapTransp(xArm, yArm, Graphic, Graphic[0], GRAPHIC_WIDTH, GRAPHIC_HEIGHT);
+  
+    const uint16_t col = ILI9341_RED;
+
+    drawDot(xR, yR, rDot, col, 'R');
+    drawDot(xA, yA, rDot, col, 'A');
+    drawDot(xB, yB, rDot, col, 'B');
+    drawDot(xC, yC, rDot, col, 'C');
+    drawDot(xD, yD, rDot, col, 'D');
+    drawDot(xG, yG, rDot, col, 'G');
+} 
+
+void UI::drawButtonStartStop(bool start, bool pressed){
+    constexpr int x = PADDING_SIDES;
+    constexpr int y = 2*(PADDING_SIDES) + hButton;
+    constexpr int w = wButtonBig;
+    constexpr int h = hButton;
+    constexpr int textSize = 2;
+  
+    drawButtonBox(x, y, w, h, pressed);
+
+    tft.setTextColor(COL_OUTLINE);
+    tft.setTextSize(textSize);
+  
+    if(start){
+        tft.setCursor(x + (w / 2) - (strlen("Start") * 3 * textSize),
+                        y + (h / 2) - (4 * textSize));
+        tft.println("Start");
+    }
+    else{
+        tft.setCursor(x + (w / 2) - (strlen("Stop") * 3 * textSize),
+                        y + (h / 2) - (4 * textSize));
+        tft.println("Stop");
+    }
+}
+  
+void UI::drawButtonHoming(bool pressed){
+    constexpr int x = PADDING_SIDES;
+    constexpr int y = PADDING_SIDES;
+    constexpr int w = wButtonBig;
+    constexpr int h = hButton;
+    constexpr int textSize = 2;
+  
+    drawButtonBox(x, y, w, h, pressed);
+  
+    tft.setTextColor(COL_OUTLINE);
+    tft.setTextSize(textSize);
+
+    tft.setCursor(x + (w / 2) - (strlen("Home") * 3 * textSize),
+                    y + (h / 2) - (4 * textSize));
+    tft.println("Home");
+}
