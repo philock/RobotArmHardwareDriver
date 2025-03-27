@@ -4,19 +4,17 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>      // this is needed even tho we aren't using it
-#include <Adafruit_ILI9341.h>
+//#include <Adafruit_ILI9341.h>
+#include <ILI9341_t3.h>
 #include <logger.h>
 #include <uiGraphics.h>
 #include <uiLayout.h>
-
-#define TFT_CS 2
-#define TFT_DC 4
-#define TFT_RST 21
+#include <pinConfig.h>
 
 
 class UI{
     private:
-        Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
+        ILI9341_t3 tft = ILI9341_t3(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
 
         typedef void (*CallbackFunction)();
         CallbackFunction _cbButtonHome;
