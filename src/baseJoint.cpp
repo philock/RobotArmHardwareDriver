@@ -8,9 +8,9 @@ _endstop(conf.pinEs, conf.endstopActiveHigh, conf.endstopInputPullup){
     float radPerFullStep = conf.degPerFullStep * DEG_TO_RAD;
 
     _microstepping = conf.microsteps;
-    _stepsPerRad = _microstepping/radPerFullStep;
-    _transmission = conf.transmissionFactor;
-    _convFactor = _stepsPerRad*_transmission;
+    _stepsPerRad   = _microstepping/radPerFullStep;
+    _transmission  = conf.transmissionFactor;
+    _convFactor    = _stepsPerRad*_transmission;
 
     _pinEn = conf.pinEn;
     pinMode(_pinEn, OUTPUT);

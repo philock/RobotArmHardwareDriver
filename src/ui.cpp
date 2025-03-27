@@ -7,6 +7,8 @@ void UI::init(){
 
     ts.begin(SPI);
 
+    for(int i = 0; i < 6; i++) _jointStateIndicators[i] = JointStates::STOP;
+
     drawButtonHoming();
     drawButtonStartStop(true, false);
     drawButtonUp();
@@ -94,45 +96,26 @@ void UI::handleTsRelease(){
 
 
 // Set color joint state indicator dot. 0: Red, 1: Orange, 2: Green
-void UI::setJointIndicator(const char joint, const int state){
+void UI::setJointIndicator(const int joint, const JointStates state){
+    if(state == _jointStateIndicators[joint]) return;
+    
+    _jointStateIndicators[joint] = state;
+
     uint16_t col;
 
     switch(state){
-        case 0: 
+        case JointStates::ESTOP: 
             col = ILI9341_RED;
             break;
-        case 1:
+        case JointStates::STOP:
             col = ILI9341_ORANGE;
             break;
-        case 2:
+        default: // Active and Homing
             col = ILI9341_GREEN;
             break;
-        default:
-            return;
     }
 
-    switch(joint){
-        case 'R':
-            drawDot(xR, yR, rDot, col, 'R');
-            break;
-        case 'A':
-            drawDot(xA, yA, rDot, col, 'A');
-            break;
-        case 'B':
-            drawDot(xB, yB, rDot, col, 'B');
-            break;
-        case 'C':
-            drawDot(xC, yC, rDot, col, 'C');
-            break;
-        case 'D':
-            drawDot(xD, yD, rDot, col, 'D');
-            break;
-        case 'G':
-            drawDot(xG, yG, rDot, col, 'G');
-            break;
-        default:
-            break;
-    }
+    drawDot(xDot[joint], yDot[joint], rDot, col, axisLabels[joint]);
 }
 
 // Set wether button should show start or stop
@@ -312,10 +295,12 @@ void UI::drawDot(const int x, const int y, const int r, const uint16_t color, co
     const int xt = x - r/2 + 1;
     const int yt = y - r/2;
   
-    //tft.setFont(LiberationSans_8);
-    tft.setFontAdafruit();
     tft.fillCircle(x, y, r, color);
     tft.drawCircle(x, y, r, COL_OUTLINE);
+    
+    //tft.setFont(LiberationSans_8);
+    tft.setFontAdafruit();
+    tft.setTextColor(ILI9341_BLACK);
     tft.setCursor(xt, yt);
     tft.print(letter);
 }
@@ -325,12 +310,9 @@ void UI::drawArmBox(){
   
     const uint16_t col = ILI9341_RED;
 
-    drawDot(xR, yR, rDot, col, 'R');
-    drawDot(xA, yA, rDot, col, 'A');
-    drawDot(xB, yB, rDot, col, 'B');
-    drawDot(xC, yC, rDot, col, 'C');
-    drawDot(xD, yD, rDot, col, 'D');
-    drawDot(xG, yG, rDot, col, 'G');
+    for(int i = 0; i < 6; i++){
+        drawDot(xDot[i], yDot[i], rDot, col, axisLabels[i]);    
+    }
 } 
 
 void UI::drawButtonStartStop(bool start, bool pressed){

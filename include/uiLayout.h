@@ -42,7 +42,23 @@ constexpr int yArm    = PADDING_SIDES;
 // Robot arm graphic dot properties (Status indicators)
 constexpr int rDot = 6;
 
-constexpr int xR = xArm + (wArmBox)/2 + 38;
+constexpr int xDot[] = {xArm + (wArmBox)/2 + 38, // R
+                        xArm + (wArmBox)/2 + 30, // A
+                        xArm + (wArmBox)/2 - 23, // B
+                        xArm + 29,               // C
+                        xArm + 29,               // D   
+                        xArm + 29};              // G
+
+constexpr int yDot[] = {yArm + 93,  // R
+                        yArm + 73,  // A
+                        yArm + 10,  // B
+                        yArm + 62,  // C
+                        yArm + 78,  // D
+                        yArm + 97}; // G
+
+const char axisLabels[] = {'R', 'A', 'B', 'C', 'D', 'G'};
+
+/* constexpr int xR = xArm + (wArmBox)/2 + 38;
 constexpr int yR = yArm + 93;
 
 constexpr int xA = xArm + (wArmBox)/2 + 30;
@@ -58,4 +74,4 @@ constexpr int xD = xArm + 29;
 constexpr int yD = yArm + 78;
 
 constexpr int xG = xArm + 29;
-constexpr int yG = yArm + 97;
+constexpr int yG = yArm + 97; */

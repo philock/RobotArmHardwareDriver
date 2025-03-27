@@ -10,6 +10,7 @@
 #include <uiGraphics.h>
 #include <uiLayout.h>
 #include <pinConfig.h>
+#include <systemConfig.h>
 #include <font_LiberationSans.h>
 
 class UI{
@@ -31,6 +32,8 @@ class UI{
         bool _homeButtonPressed      = false;
         
         bool _startStopButtonIsStart = true;
+
+        JointStates _jointStateIndicators[6];
 
         // Draw Bitmap and skip pixels matching transparency color
         void drawRGBBitmapTransp(int16_t x, int16_t y, const uint16_t *bitmap, uint16_t transp, int16_t w, int16_t h);
@@ -78,8 +81,8 @@ class UI{
         // Called periodically to draw new log messages and handle touch inputs
         void update();
 
-        // set joint indicators: joint: R,A,B,C,D,G state: 0->red, 1->yellow 2->green
-        void setJointIndicator(const char joint, const int state);
+        // set joint indicators: joint: 0-R, 1-A, 2-B, 3-C, 4-D, 5-G 
+        void setJointIndicator(const int joint, const JointStates state);
 
         void setStartStopButtonState(bool start);
 

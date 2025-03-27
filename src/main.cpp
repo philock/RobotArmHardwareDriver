@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <systemConfig.h>
 #include <comm.h>
 #include <axisCDR.h>
 #include <baseJoint.h>
@@ -8,24 +9,16 @@
 Comm cm(115200);
 UI   ui;
 
-enum class SystemStates{
-    ESTOP,
-    STOP,
-    ACTIVE,
-    HOMING_A,
-    HOMING_BC,
-    HOMING_DR,
-};
 SystemStates state = SystemStates::STOP;
 
-Input emergencyStop(PIN_EMS, false, true);
+Input emergencyStop(PIN_EMS, true, true);
 
 #define PSU_ON  digitalWrite(PIN_RELAY, LOW);
 #define PSU_OFF digitalWrite(PIN_RELAY, HIGH);
 
 AxisCDR axisR(axisConfigC);
-AxisCDR axisA(axisConfigC);
-AxisCDR axisB(axisConfigC);
+AxisCDR axisA(axisConfigA);
+AxisCDR axisB(axisConfigB);
 AxisCDR axisC(axisConfigC);
 AxisCDR axisD(axisConfigC);
 
@@ -33,10 +26,15 @@ unsigned long updateVelocitiesInterval = 50000; // 50ms
 elapsedMicros t_lastVelocityUpdate;
 elapsedMicros t_systemTick;
 elapsedMicros t_uiUpdate;
+elapsedMicros t_uiJointUpdate;
 
-// Declarations
+bool start();
 void stop();
-bool allHomed();
+void homing();
+
+bool allHomed(){
+    return axisA.isHomed() && axisB.isHomed() && axisC.isHomed() && axisD.isHomed() && axisR.isHomed();
+}
 
 // -----------------------------------------
 // IO callbacks
@@ -51,6 +49,8 @@ void cb_emergencyStopActivation(){
     PSU_OFF
 
     state = SystemStates::ESTOP;
+
+    logger.error("Emergency stop pressed");
 }
 
 void cb_emergencyStopDeactivation(){
@@ -58,14 +58,26 @@ void cb_emergencyStopDeactivation(){
     delay(100);
 
     stop();
+
+    logger.info("Emergency stop released");
 }
 
 void cb_homingButton(){
-    ui.setStartStopButtonState(true);
+    homing();
 }
 
 void cb_startStopButton(){
-    ui.setStartStopButtonState(false);
+    if(state == SystemStates::STOP){ // Start pressed
+        bool isStarted = start();
+
+        if(isStarted) ui.setStartStopButtonState(false); // Show "Stop" button
+        else          ui.setStartStopButtonState(true);  // Show "Start" button
+    }
+    else if(state == SystemStates::ACTIVE){ // Stop pressed
+        stop();
+
+        ui.setStartStopButtonState(true); // Show "Start" button
+    }
 }
 
 // -----------------------------------------
@@ -130,15 +142,21 @@ void processRespondMessage(){
 // State entry functions
 // -----------------------------------------
 void homing(){
-    if(state == SystemStates::ESTOP) return;
+    if(state != SystemStates::STOP) return;
     
+    PSU_ON
+
+    logger.info("Homing axis A...");
     state = SystemStates::HOMING_A;
     axisA.home();
 }
 
-void start(){
-    if(state == SystemStates::ESTOP) return;
-    if(!allHomed()) return;
+bool start(){
+    if(state != SystemStates::STOP) return false;
+    if(!allHomed()){
+        logger.warning("Not fully homed");
+        return false;
+    } 
 
     axisA.start();
     axisB.start();
@@ -147,7 +165,10 @@ void start(){
     axisR.start();
 
     state = SystemStates::ACTIVE;
+
     logger.info("System started");
+
+    return true;
 }
 
 void stop(){
@@ -158,6 +179,8 @@ void stop(){
     axisR.stop();
 
     state = SystemStates::STOP;
+
+    logger.info("System stopped");
 }
 
 // -----------------------------------------
@@ -170,15 +193,18 @@ void runSystem(){
     
     case SystemStates::HOMING_A:
         if(axisA.isHomed()){
-            state = SystemStates::HOMING_BC;
+            /* state = SystemStates::HOMING_BC;
+            logger.info("Homing axis B and C");
             axisB.home();
-            axisC.home();
+            axisC.home(); */
+            stop();
         }
         break;
     
     case SystemStates::HOMING_BC:
         if(axisB.isHomed() && axisC.isHomed()){
             state = SystemStates::HOMING_DR;
+            logger.info("Homing axis D and R");
             axisD.home();
             axisR.home();
         }
@@ -186,7 +212,8 @@ void runSystem(){
 
     case SystemStates::HOMING_DR:
         if(axisD.isHomed() && axisR.isHomed()){
-            state = SystemStates::STOP;
+            logger.info("All axis homed");
+            stop();
         }
         break;
 
@@ -202,11 +229,7 @@ void runSystem(){
     }
 }
 
-bool allHomed(){
-    return axisA.isHomed() && axisB.isHomed() && axisC.isHomed() && axisD.isHomed() && axisR.isHomed();
-}
-
-void setup(void){
+void setup(){
     //Serial.begin(115200);
     emergencyStop.limitRate(EMERGENCY_STOP_POLL_RATE);
     emergencyStop.setActivationHandler(cb_emergencyStopActivation);
@@ -220,22 +243,17 @@ void setup(void){
     ui.init();
     ui.registerCbButtonHome(cb_homingButton);
     ui.registerCbButtonStartStop(cb_startStopButton);
-
-    logger.info("Info");
-    logger.warning("Warning");
-    logger.error("Error 1");
-    logger.error("Error 2");
-    logger.error("Error 3");
-    logger.error("Error 4");
-    logger.error("Error 5");
-    logger.error("Error 6");
-    logger.error("Error 7");
-    logger.error("Error 8");
-    logger.info("This is a long information message");
 }
 
+elapsedMicros loopTimer;
 void loop(){
-    /* emergencyStop.poll();
+    emergencyStop.poll();
+
+    axisA.run();
+    axisB.run();
+    axisC.run();
+    axisD.run();
+    axisR.run();
 
     // Process communication with host computer and update system FSM
     if(t_systemTick > 5000){
@@ -243,23 +261,26 @@ void loop(){
         processRespondMessage();
         runSystem();
     } 
-    axisA.run();
-    axisB.run();
-    axisC.run();
-    axisD.run();
-    axisR.run();
-    */
 
-    unsigned long t1, t2;
-
+    // Process touchscreen inputs and update log box
     if(t_uiUpdate > 100000){
         t_uiUpdate = 0;
 
-        t1 = micros();
         ui.update();
-        t2 = micros();
-
-        Serial.println(t2-t1);
     }
 
+    // Update joint state indicators
+    if(t_uiJointUpdate > 500000){
+        ui.setJointIndicator(0, axisR.getState());
+        ui.setJointIndicator(1, axisA.getState());
+        ui.setJointIndicator(2, axisB.getState());
+        ui.setJointIndicator(3, axisC.getState());
+        ui.setJointIndicator(4, axisD.getState());
+        //ui.setJointIndicator(5, axisG.getState());
+    }
+
+    /* if(loopTimer > 50){
+        Serial.println(loopTimer);
+    } 
+    loopTimer = 0; */
 }

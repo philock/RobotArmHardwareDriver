@@ -12,7 +12,7 @@ driver(conf.uartSerialPort, TMC2226_R_SENSE, conf.spiAddress){
     driver.en_spreadCycle(0);
     driver.pwm_autoscale(1);
     delay(100);
-    driver.microsteps(8);
+    driver.microsteps(conf.microsteps);
 }
 
 void AxisCDR::home(){

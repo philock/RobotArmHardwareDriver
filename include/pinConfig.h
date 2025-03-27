@@ -39,7 +39,12 @@ const AxisConfig axisConfigA = {
     .pinDir  = PIN_AX_A_DIR,
     .pinCs   = PIN_AX_A_CS,
     .pinEn   = PIN_AX_A_EN,
-    .pinEs   = PIN_AX_A_ES
+    .pinEs   = PIN_AX_A_ES,
+    .transmissionFactor = 10*72/24,
+    .degPerFullStep = 1.8,
+    .microsteps = 8,
+    .endstopInputPullup = true,
+    .endstopActiveHigh = true
 };
 
 // Axis B
@@ -48,6 +53,18 @@ const AxisConfig axisConfigA = {
 #define PIN_AX_B_CS  1 
 #define PIN_AX_B_EN  26
 #define PIN_AX_B_ES  6
+const AxisConfig axisConfigB = {
+    .pinStep = PIN_AX_B_STP,
+    .pinDir  = PIN_AX_B_DIR,
+    .pinCs   = PIN_AX_B_CS,
+    .pinEn   = PIN_AX_B_EN,
+    .pinEs   = PIN_AX_B_ES,
+    .transmissionFactor = 1*72/24,
+    .degPerFullStep = 1.8,
+    .microsteps = 8,
+    .endstopInputPullup = true,
+    .endstopActiveHigh = false
+};
 
 // Axis C
 #define PIN_AX_C_STP  16

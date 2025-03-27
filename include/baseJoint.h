@@ -6,14 +6,6 @@
 #include <systemConfig.h>
 #include <pinConfig.h>
 
-enum class JointStates{
-    STOP,
-    ACTIVE,
-    HOMING,
-    HOMING_BACKOFF,
-    ESTOP
-};
-
 class BaseJoint{
     public:
         BaseJoint(const AxisConfig& conf);
@@ -35,6 +27,7 @@ class BaseJoint{
         float getSpeed();
         void  setPos(float rad);
         float getPos();
+        JointStates getState(){return _state;}
         
     private:
         bool _invertDir;
