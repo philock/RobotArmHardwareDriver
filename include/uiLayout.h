@@ -30,7 +30,7 @@ constexpr int padScrollbar = 10; // padding between scrollbar and log box. Also 
 
 // Log box text properties
 constexpr int fontHight    = 10;
-constexpr int linesPadding = 5;
+constexpr int linesPadding = 6;
 constexpr int nLines = (hLog - linesPadding)/(fontHight + linesPadding);
 
 // Robot arm graphic box

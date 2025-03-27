@@ -1,4 +1,4 @@
-#include <BaseJoint.h>
+#include <baseJoint.h>
 #include <Arduino.h>
 
 BaseJoint::BaseJoint(const AxisConfig& conf):

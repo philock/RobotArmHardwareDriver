@@ -3,8 +3,10 @@
 #include <axisCDR.h>
 #include <baseJoint.h>
 #include <logger.h>
+#include <ui.h>
 
 Comm cm(115200);
+UI   ui;
 
 enum class SystemStates{
     ESTOP,
@@ -30,6 +32,7 @@ AxisCDR axisD(axisConfigC);
 unsigned long updateVelocitiesInterval = 50000; // 50ms
 elapsedMicros t_lastVelocityUpdate;
 elapsedMicros t_systemTick;
+elapsedMicros t_uiUpdate;
 
 // Declarations
 void stop();
@@ -55,6 +58,14 @@ void cb_emergencyStopDeactivation(){
     delay(100);
 
     stop();
+}
+
+void cb_homingButton(){
+    ui.setStartStopButtonState(true);
+}
+
+void cb_startStopButton(){
+    ui.setStartStopButtonState(false);
 }
 
 // -----------------------------------------
@@ -196,30 +207,59 @@ bool allHomed(){
 }
 
 void setup(void){
+    //Serial.begin(115200);
     emergencyStop.limitRate(EMERGENCY_STOP_POLL_RATE);
     emergencyStop.setActivationHandler(cb_emergencyStopActivation);
     emergencyStop.setDeactivationHandler(cb_emergencyStopDeactivation);
 
     pinMode(PIN_RELAY, OUTPUT);
-    PSU_ON
+    PSU_OFF
 
     stop();  
+
+    ui.init();
+    ui.registerCbButtonHome(cb_homingButton);
+    ui.registerCbButtonStartStop(cb_startStopButton);
+
+    logger.info("Info");
+    logger.warning("Warning");
+    logger.error("Error 1");
+    logger.error("Error 2");
+    logger.error("Error 3");
+    logger.error("Error 4");
+    logger.error("Error 5");
+    logger.error("Error 6");
+    logger.error("Error 7");
+    logger.error("Error 8");
+    logger.info("This is a long information message");
 }
 
 void loop(){
-    emergencyStop.poll();
+    /* emergencyStop.poll();
 
     // Process communication with host computer and update system FSM
     if(t_systemTick > 5000){
         t_systemTick = 0;
         processRespondMessage();
         runSystem();
-    }
-
-
+    } 
     axisA.run();
     axisB.run();
     axisC.run();
     axisD.run();
     axisR.run();
+    */
+
+    unsigned long t1, t2;
+
+    if(t_uiUpdate > 100000){
+        t_uiUpdate = 0;
+
+        t1 = micros();
+        ui.update();
+        t2 = micros();
+
+        Serial.println(t2-t1);
+    }
+
 }

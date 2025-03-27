@@ -5,6 +5,8 @@ void UI::init(){
     tft.setRotation(3);
     tft.fillScreen(COL_BG);
 
+    ts.begin(SPI);
+
     drawButtonHoming();
     drawButtonStartStop(true, false);
     drawButtonUp();
@@ -20,16 +22,30 @@ void UI::update(){
         drawLogUpdate();
     }
 
-    // read touchscreen input
-    const int x = 200; 
-    const int y = 200;
+    // read touchscreen input and detect rising and falling edges
+    bool tsState = ts.touched();
+    if(_tsTouched != tsState){
+        _tsTouched = tsState; // state change detected
+    }
+    else return;
+
+    if(_tsTouched) handleTsTouch();
+    else           handleTsRelease();
+}
+
+void UI::handleTsTouch(){
+    TS_Point p = ts.getPoint();
+
+    p.x = map(p.x, TS_MINX, TS_MAXX, 0, tft.width());
+    p.y = map(p.y, TS_MINY, TS_MAXY, 0, tft.height());
+
     constexpr int yHitbox = hButton + PADDING_SIDES;
 
     // ignore right side of the screen
-    if(x > wButtonBig) return;
+    if(p.x > wButtonBig) return;
 
     // 0: Home, 1: Start/Stop, 2: Up, 3: Down
-    int yIdx = y/yHitbox;
+    int yIdx = p.y/yHitbox;
 
     switch (yIdx){
     case 0: // Home
@@ -38,21 +54,44 @@ void UI::update(){
         _cbButtonHome();
         break; 
     case 1: // Start/Stop
-        drawButtonStartStop(_startStopButtonIsStart, _startStopButtonPressed);
+        _startStopButtonPressed = true;
+        drawButtonStartStop(_startStopButtonIsStart, true);
         _cbButtonStartStop();
         break;
     case 2: // Up
-        scrollUp();
+        _upButtonPressed = true;
         drawButtonUp(true);
+        scrollUp();
         break;
     case 3: // Down
-        scrollDown();
+        _downButtonPressed = true;
         drawButtonDown(true);
+        scrollDown();
         break;
     default:
         break;
     }
 }
+
+void UI::handleTsRelease(){
+    if(_homeButtonPressed){
+        _homeButtonPressed = false;
+        drawButtonHoming(false);
+    }
+    if(_startStopButtonPressed){
+        _startStopButtonPressed = false;
+        drawButtonStartStop(_startStopButtonIsStart, false);
+    }
+    if(_upButtonPressed){
+        _upButtonPressed = false;
+        drawButtonUp(false);
+    }
+    if(_downButtonPressed){
+        _downButtonPressed = false;
+        drawButtonDown(false);
+    }
+}
+
 
 // Set color joint state indicator dot. 0: Red, 1: Orange, 2: Green
 void UI::setJointIndicator(const char joint, const int state){
@@ -112,10 +151,7 @@ void UI::registerCbButtonStartStop(CallbackFunction f){
 
 // Adapted function from adafruit GFX library to support transparency
 void UI::drawRGBBitmapTransp(int16_t x, int16_t y, const uint16_t *bitmap, uint16_t transp, int16_t w, int16_t h) {
-    int16_t bw = (w + 7) / 8; // Bitmask scanline pad = whole byte
-    uint8_t b = 0;
-
-    tft.startWrite();
+    //tft.startWrite();
 
     for (int16_t j = 0; j < h; j++, y++){
       for (int16_t i = 0; i < w; i++){
@@ -123,13 +159,13 @@ void UI::drawRGBBitmapTransp(int16_t x, int16_t y, const uint16_t *bitmap, uint1
         uint16_t pixel = bitmap[j * w + i];
 
         if (pixel != transp) {
-            tft.writePixel(x + i, y, pixel);
+            tft.drawPixel(x + i, y, pixel);
         }
 
       }
     }
 
-    tft.endWrite();
+    //tft.endWrite();
 }
 
 void UI::drawButtonBox(const int x, const int y, const int w, const int h, const bool pressed){
@@ -150,6 +186,7 @@ void UI::fillLog(){
         switch(msg->level){
             case MessageLevel::INFO:
             tft.setTextColor(ILI9341_DARKGREEN);
+            //tft.setTextColor(ILI9341_GREEN);
             break;
             case MessageLevel::WARNING:
             //tft.setTextColor(ILI9341_ORANGE);
@@ -160,8 +197,8 @@ void UI::fillLog(){
             break;
         }
     
-        tft.setCursor(xLog + linesPadding, yLog + hLog - (i + 1)*(fontHight + linesPadding));
-        tft.setTextSize(1.8);
+        tft.setFont(LiberationSans_11);
+        tft.setCursor(xLog + linesPadding, yLog + hLog - 1 - (i + 1)*(fontHight + linesPadding));
         tft.println(msg->message);
 
     }
@@ -176,7 +213,7 @@ void UI::drawScrollbar(float pos){
     constexpr int point_x = x + wScrollbar/2;
     constexpr int point_y_0 = y + point_r;
   
-    tft.fillRoundRect(x, y, wScrollbar, h, wScrollbar/2, COL_BG);
+    tft.fillRect(x, y, wScrollbar, h, COL_BG);
     tft.drawRoundRect(x, y, wScrollbar, h, wScrollbar/2, COL_OUTLINE);  
   
     int point_y = point_y_0 + (h - 2*point_r - 1)*(1 - pos);
@@ -201,11 +238,12 @@ void UI::drawLogFull(){
 
 void UI::drawLogUpdate(){
     constexpr int x = xLog + linesPadding;
+    constexpr int y = yLog + linesPadding;
     constexpr int w = wLog - 2*linesPadding - padScrollbar - wScrollbar;
-    constexpr int h = hLog - 2*linesPadding;
+    constexpr int h = hLog - 2*linesPadding + 2;
     
     // Clear log box
-    tft.fillRect(x, yLog + linesPadding, w , h, COL_BOX);
+    tft.fillRect(x, y, w , h, COL_BOX);
     
     // Update scrollbar
     int msgCount = logger.getMessageCount();
@@ -274,7 +312,8 @@ void UI::drawDot(const int x, const int y, const int r, const uint16_t color, co
     const int xt = x - r/2 + 1;
     const int yt = y - r/2;
   
-    tft.setTextSize(1);
+    //tft.setFont(LiberationSans_8);
+    tft.setFontAdafruit();
     tft.fillCircle(x, y, r, color);
     tft.drawCircle(x, y, r, COL_OUTLINE);
     tft.setCursor(xt, yt);
@@ -299,21 +338,20 @@ void UI::drawButtonStartStop(bool start, bool pressed){
     constexpr int y = 2*(PADDING_SIDES) + hButton;
     constexpr int w = wButtonBig;
     constexpr int h = hButton;
-    constexpr int textSize = 2;
   
     drawButtonBox(x, y, w, h, pressed);
 
     tft.setTextColor(COL_OUTLINE);
-    tft.setTextSize(textSize);
-  
+    tft.setFont(LiberationSans_18);
+
     if(start){
-        tft.setCursor(x + (w / 2) - (strlen("Start") * 3 * textSize),
-                        y + (h / 2) - (4 * textSize));
+        tft.setCursor(x + (w / 2) - (strlen("Start") * 18)/2 + 19,
+                      y + (h / 2) - (LiberationSans_18.cap_height)/2);
         tft.println("Start");
     }
     else{
-        tft.setCursor(x + (w / 2) - (strlen("Stop") * 3 * textSize),
-                        y + (h / 2) - (4 * textSize));
+        tft.setCursor(x + (w / 2) - (strlen("Stop") * 18)/2 + 10,
+                      y + (h / 2) - (LiberationSans_18.cap_height)/2);
         tft.println("Stop");
     }
 }
@@ -323,14 +361,13 @@ void UI::drawButtonHoming(bool pressed){
     constexpr int y = PADDING_SIDES;
     constexpr int w = wButtonBig;
     constexpr int h = hButton;
-    constexpr int textSize = 2;
   
     drawButtonBox(x, y, w, h, pressed);
   
     tft.setTextColor(COL_OUTLINE);
-    tft.setTextSize(textSize);
+    tft.setFont(LiberationSans_18);
 
-    tft.setCursor(x + (w / 2) - (strlen("Home") * 3 * textSize),
-                    y + (h / 2) - (4 * textSize));
+    tft.setCursor(x + (w / 2) - (strlen("Home") * 18)/2 + 2,
+                  y + (h / 2) - (LiberationSans_18.cap_height)/2);
     tft.println("Home");
 }
